@@ -1,0 +1,11 @@
+
+{
+  "name": "DayFlow",
+  "short_name": "DayFlow",
+  "description": "个人日程与任务管理",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait"
+}

@@ -1,0 +1,485 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f5f6fa">
+<title>DayFlow</title>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    background: #f5f6fa;
+    color: #202435;
+    padding: 25px 20px;
+}
+
+.container { max-width: 500px; margin: auto; }
+
+.header { margin: 30px 0; }
+.date { color: #858b9b; font-size: 14px; margin-bottom: 12px; }
+h1 { font-size: 28px; margin-bottom: 10px; }
+.subtitle { color: #858b9b; font-size: 14px; }
+
+.progress-card {
+    background: white;
+    padding: 22px;
+    border-radius: 18px;
+    margin-bottom: 28px;
+}
+
+.progress-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #edf0f5;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: #627eea;
+    transition: width .3s;
+}
+
+.section-title { font-size: 19px; margin-bottom: 16px; }
+
+.task {
+    background: white;
+    border-radius: 15px;
+    padding: 17px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-weight: 600; margin-bottom: 6px; }
+.task-meta { font-size: 12px; color: #858b9b; }
+
+.task.done .task-name {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.check {
+    width: 23px;
+    height: 23px;
+    border: 2px solid #cbd0dc;
+    border-radius: 50%;
+    background: white;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.task.done .check {
+    background: #627eea;
+    border-color: #627eea;
+}
+
+.empty {
+    background: white;
+    border-radius: 18px;
+    padding: 35px 20px;
+    text-align: center;
+    color: #9298a7;
+    font-size: 14px;
+}
+
+.add-button {
+    width: 100%;
+    border: none;
+    background: #627eea;
+    color: white;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 16px;
+    margin-top: 22px;
+    cursor: pointer;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #0006;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+    border-radius: 20px;
+}
+
+.modal h2 { margin-bottom: 20px; }
+
+label {
+    display: block;
+    font-size: 13px;
+    color: #777;
+    margin: 15px 0 7px;
+}
+
+input {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 16px;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.modal-buttons button {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.cancel { background: #f0f1f5; }
+.confirm { background: #627eea; color: white; }
+
+</style>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<div class="container">
+
+    <div class="header">
+        <div class="date" id="today"></div>
+        <h1>今天，做好每一件事。</h1>
+        <p class="subtitle">专注当下，慢慢进步。</p>
+    </div>
+
+    <div class="progress-card">
+        <div class="progress-top">
+            <span>今日完成进度</span>
+            <span id="progress-text">0 / 0</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+    </div>
+<button onclick="showStats()"
+style="width:100%;padding:14px;background:white;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:22px;font-size:15px;">
+📊 查看历史统计
+</button>
+    <h2 class="section-title">今日任务</h2>
+    <button onclick="enableNotifications()"
+style="width:100%;padding:13px;background:#e9edff;color:#526bd0;border:none;border-radius:12px;margin-bottom:15px;font-size:14px;">
+🔔 开启任务提醒
+</button>
+
+    <div id="task-list"></div>
+
+    <button class="add-button" onclick="openModal()">
+        + 添加今日任务
+    </button>
+
+</div>
+<div id="stats-page" style="display:none;position:fixed;inset:0;background:#f5f6fa;z-index:10;overflow:auto;padding:30px 20px;">
+    <div style="max-width:500px;margin:auto;">
+        <button onclick="closeStats()" style="border:none;background:white;padding:12px 18px;border-radius:10px;margin-bottom:25px;">← 返回</button>
+
+        <h1 style="margin-bottom:25px;">成长记录</h1>
+
+        <div style="background:white;padding:22px;border-radius:16px;margin-bottom:15px;">
+            <p style="color:#858b9b;font-size:13px;">累计完成任务</p>
+            <h1 id="total-completed">0</h1>
+        </div>
+
+        <div style="background:white;padding:22px;border-radius:16px;margin-bottom:15px;">
+            <p style="color:#858b9b;font-size:13px;">历史完成率</p>
+            <h1 id="completion-rate">0%</h1>
+        </div>
+
+        <div style="background:white;padding:22px;border-radius:16px;">
+            <p style="color:#858b9b;font-size:13px;">平均完成质量</p>
+            <h1 id="average-score">暂无</h1>
+        </div>
+    </div>
+</div>
+<div class="modal" id="modal">
+    <div class="modal-content">
+        <h2>添加任务</h2>
+
+        <label>任务名称</label>
+        <input id="task-name" placeholder="例如：英语学习">
+
+        <label>开始时间</label>
+        <input id="task-time" type="time">
+
+        <label>预计时长（分钟）</label>
+        <input id="task-duration" type="number" value="60" min="1">
+
+        <div class="modal-buttons">
+            <button class="cancel" onclick="closeModal()">取消</button>
+            <button class="confirm" onclick="addTask()">保存任务</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const today = new Date();
+const dateKey = today.getFullYear() + "-" +
+    String(today.getMonth()+1).padStart(2,"0") + "-" +
+    String(today.getDate()).padStart(2,"0");
+
+document.getElementById("today").textContent =
+    today.getFullYear() + "年" +
+    (today.getMonth()+1) + "月" +
+    today.getDate() + "日";
+
+let tasks = JSON.parse(localStorage.getItem("dayflow-" + dateKey) || "[]");
+
+function save() {
+    localStorage.setItem("dayflow-" + dateKey, JSON.stringify(tasks));
+}
+
+function openModal() {
+    document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("modal").style.display = "none";
+}
+
+function addTask() {
+    const name = document.getElementById("task-name").value.trim();
+    const time = document.getElementById("task-time").value;
+    const duration = Number(document.getElementById("task-duration").value);
+
+    if (!name || !time || !Number.isFinite(duration) || duration <= 0) {
+        alert("请填写正确的任务名称、时间和时长");
+        return;
+    }
+
+    tasks.push({
+        id: Date.now() + Math.random(),
+        name,
+        time,
+        duration,
+        done: false,
+        score: null
+    });
+
+    save();
+    render();
+    closeModal();
+
+    document.getElementById("task-name").value = "";
+    document.getElementById("task-time").value = "";
+    document.getElementById("task-duration").value = "60";
+}
+
+function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+
+    if (!task.done) {
+        const score = prompt(
+            "今天这项任务完成质量如何？\n请输入 1～5 分：\n1 = 很差，5 = 非常好"
+        );
+
+        if (score === null) return;
+
+        const number = Number(score);
+
+        if (!Number.isInteger(number) || number < 1 || number > 5) {
+            alert("请输入 1 到 5 之间的整数");
+            return;
+        }
+
+        task.done = true;
+        task.score = number;
+
+    } else {
+        task.done = false;
+        task.score = null;
+    }
+
+    save();
+    render();
+}
+function deleteTask(id) {
+    if (!confirm("确定删除这项任务吗？")) return;
+
+    tasks = tasks.filter(task => task.id !== id);
+    save();
+    render();
+}
+
+let reminderTimers = [];
+
+async function enableNotifications() {
+    if (!("Notification" in window)) {
+        alert("当前浏览器不支持通知功能");
+        return;
+    }
+
+    const permission = await Notification.requestPermission();
+
+    if (permission === "granted") {
+        alert("提醒功能已开启！");
+        scheduleReminders();
+    } else {
+        alert("你没有允许通知，请在浏览器设置中开启通知权限。");
+    }
+}
+
+function scheduleReminders() {
+    reminderTimers.forEach(timer => clearTimeout(timer));
+    reminderTimers = [];
+
+    if (!("Notification" in window) ||
+        Notification.permission !== "granted") {
+        return;
+    }
+
+    const now = new Date();
+
+    tasks.forEach(task => {
+        if (task.done || !task.time) return;
+
+        const [hours, minutes] = task.time.split(":").map(Number);
+
+        const target = new Date();
+        target.setHours(hours, minutes, 0, 0);
+
+        const delay = target.getTime() - now.getTime();
+
+        if (delay > 0 && delay < 86400000) {
+            const timer = setTimeout(() => {
+                new Notification("DayFlow 任务提醒", {
+                    body: "现在该开始了：" + task.name,
+                    tag: "dayflow-" + task.id
+                });
+            }, delay);
+
+            reminderTimers.push(timer);
+        }
+    });
+}
+
+function render() {
+    const list = document.getElementById("task-list");
+
+    tasks.sort((a,b) => a.time.localeCompare(b.time));
+
+    if (tasks.length === 0) {
+        list.innerHTML = '<div class="empty">今天还没有安排任务</div>';
+    } else {
+        list.innerHTML = tasks.map(task => `
+            <div class="task ${task.done ? 'done' : ''}">
+                <button class="check"
+                    onclick="toggleTask(${task.id})"
+                    aria-label="切换完成状态"></button>
+               <div class="task-info">
+    <div class="task-name">${escapeHTML(task.name)}</div>
+    <div class="task-meta">
+        ${task.time} · ${task.duration} 分钟
+        ${task.score ? ' · 质量 ' + task.score + '/5' : ''}
+    </div>
+</div>
+<button onclick="deleteTask(${task.id})"
+    style="border:none;background:none;color:#999;font-size:13px;cursor:pointer;">
+    删除
+</button>
+            </div>
+        `).join("");
+    }
+
+    const completed = tasks.filter(t => t.done).length;
+    document.getElementById("progress-text").textContent =
+        completed + " / " + tasks.length;
+
+    document.getElementById("progress-fill").style.width =
+        tasks.length ? (completed / tasks.length * 100) + "%" : "0%";
+        scheduleReminders();
+}
+
+function escapeHTML(value) {
+    return value.replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[c]);
+}
+function showStats() {
+    const allTasks = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+
+        if (key && key.startsWith("dayflow-")) {
+            try {
+                const data = JSON.parse(localStorage.getItem(key));
+                if (Array.isArray(data)) {
+                    allTasks.push(...data);
+                }
+            } catch (e) {
+                console.error("读取历史记录失败", e);
+            }
+        }
+    }
+
+    const completed = allTasks.filter(t => t.done);
+    const scored = completed.filter(t => Number.isInteger(t.score) && t.score >= 1 && t.score <= 5);
+
+    document.getElementById("total-completed").textContent = completed.length;
+
+    document.getElementById("completion-rate").textContent =
+        allTasks.length
+            ? Math.round(completed.length / allTasks.length * 100) + "%"
+            : "0%";
+
+    document.getElementById("average-score").textContent =
+        scored.length
+            ? (scored.reduce((sum, t) => sum + t.score, 0) / scored.length).toFixed(1) + " / 5"
+            : "暂无";
+
+    document.getElementById("stats-page").style.display = "block";
+}
+
+function closeStats() {
+    document.getElementById("stats-page").style.display = "none";
+}
+render();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(() => console.log("DayFlow 离线功能已启用"))
+      .catch(error => console.error("注册失败：", error));
+  });
+}
+</script>
+</body>
+</html>
